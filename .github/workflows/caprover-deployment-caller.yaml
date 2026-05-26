@@ -25,7 +25,7 @@ on:
 
 jobs:
   deploy:
-    uses: ultra-mega-apps/workflows-public/.github/workflows/caprover_deployment.yaml@main
+    uses: ultra-mega-apps/workflows-public/.github/workflows/caprover-deployment.yaml@main
     with:
       branch: ${{ inputs.branch }}
       server: ${{ inputs.server }}
