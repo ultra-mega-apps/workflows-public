@@ -11,11 +11,6 @@ on:
         description: Environment to deploy
         required: true
         type: string
-      use_default_app_name:
-        description: Use repository name as CapRover app name
-        required: false
-        type: boolean
-        default: true
       custom_app_name:
         description: Custom CapRover app name
         required: false
@@ -49,7 +44,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "${{ inputs.use_default_app_name }}" == "true" ]]; then
+          if [[ -z "${{ inputs.custom_app_name }}" ]]; then
             CAPROVER_APP_NAME="${REPOSITORY_NAME##*/}"
           else
             CAPROVER_APP_NAME="${{ inputs.custom_app_name }}"
