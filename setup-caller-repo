@@ -66,8 +66,9 @@ jobs:
       custom_app_name: \${{ inputs.custom_app_name }}
     secrets: inherit"
 
-write_file "${MANUAL_WORKFLOW}" \
-	"name: Manual CapRover Deploy
+write_file "${MANUAL_WORKFLOW}" "$(
+	cat <<'YAML'
+name: Manual CapRover Deploy
 
 on:
   workflow_dispatch:
@@ -75,6 +76,7 @@ on:
       caprover_host:
         description: CapRover server host URL
         required: true
+        default: https://captain.example.com
         type: string
       caprover_password:
         description: CapRover app token/password
@@ -83,20 +85,52 @@ on:
       app_name:
         description: CapRover app name
         required: true
+        default: secnote
         type: string
       branch:
         description: Git branch to deploy
         required: true
-        type: string
+        default: main
+        type: choice
+        options:
+          - main
+          - master
+          - develop
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
-    uses: ultra-mega-apps/workflows-public/.github/workflows/manual_caprover_deployment.yaml@main
-    with:
-      caprover_host: \${{ inputs.caprover_host }}
-      caprover_password: \${{ inputs.caprover_password }}
-      app_name: \${{ inputs.app_name }}
-      branch: \${{ inputs.branch }}
-"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Securel  Extract and Mask Password
+        run: |
+          # 1. Read the input directly from the event payload JSON
+          # This prevents GitHub from rendering the secret in the script or env logs.
+          RAW_PASSWORD=$(jq -r '.inputs.caprover_password' $GITHUB_EVENT_PATH)
+          
+          # 2. Mask it dynamically
+          echo "::add-mask::$RAW_PASSWORD"
+          
+          # 3. Export to global env for subsequent steps
+          echo "CAPROVER_PASSWORD=$RAW_PASSWORD" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Deploy
+        env:
+          CAPROVER_HOST: ${{ inputs.caprover_host }}
+          CAPROVER_APP_NAME: ${{ inputs.app_name }}
+          CAPROVER_BRANCH: ${{ inputs.branch }}
+        run: |
+          npx --yes caprover deploy \
+            -u "${CAPROVER_HOST}" \
+            -p "${CAPROVER_PASSWORD}" \
+            -a "${CAPROVER_APP_NAME}" \
+            -b "${CAPROVER_BRANCH}"
+YAML
+)"
 
 echo "Done. Review the generated files and adjust branch/server options as needed."
