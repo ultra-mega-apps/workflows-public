@@ -2,8 +2,8 @@
 set -euo pipefail
 
 WORKFLOWS_DIR=".github/workflows"
-CAPROVER_WORKFLOW="${WORKFLOWS_DIR}/caprover_deployment.yaml"
-MANUAL_WORKFLOW="${WORKFLOWS_DIR}/manual_caprover_deployment.yaml"
+CAPROVER_WORKFLOW="${WORKFLOWS_DIR}/caprover-deployment.yaml"
+MANUAL_WORKFLOW="${WORKFLOWS_DIR}/manual-caprover-deployment.yaml"
 
 if [[ ! -d ".git" ]]; then
 	echo "Error: run this script from the root of a git repository." >&2
