@@ -13,11 +13,6 @@ on:
         required: true
         type: choice
         options: [frginbox, storage]
-      use_default_app_name:
-        description: Use the repository name as the CapRover app name
-        required: false
-        type: boolean
-        default: true
       custom_app_name:
         description: Custom CapRover app name (if not using the repository name)
         required: false
@@ -29,6 +24,5 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       server: ${{ inputs.server }}
-      use_default_app_name: ${{ inputs.use_default_app_name }}
       custom_app_name: ${{ inputs.custom_app_name }}
     secrets: inherit
