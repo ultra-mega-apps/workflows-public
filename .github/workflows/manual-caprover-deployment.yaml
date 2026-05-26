@@ -21,11 +21,7 @@ on:
         description: Git branch to deploy
         required: true
         default: main
-        type: choice
-        options:
-          - main
-          - master
-          - develop
+        type: string
 
 permissions:
   contents: read

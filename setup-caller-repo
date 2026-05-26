@@ -4,6 +4,10 @@ set -euo pipefail
 WORKFLOWS_DIR=".github/workflows"
 CAPROVER_WORKFLOW="${WORKFLOWS_DIR}/caprover-deployment-caller.yaml"
 MANUAL_WORKFLOW="${WORKFLOWS_DIR}/manual-caprover-deployment.yaml"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
+TEMPLATE_WORKFLOWS_DIR="${SCRIPT_DIR}/.github/workflows"
+CAPROVER_TEMPLATE="${TEMPLATE_WORKFLOWS_DIR}/caprover-deployment-caller.yaml"
+MANUAL_TEMPLATE="${TEMPLATE_WORKFLOWS_DIR}/manual-caprover-deployment.yaml"
 
 if [[ ! -d ".git" ]]; then
 	echo "Error: run this script from the root of a git repository." >&2
@@ -14,123 +18,39 @@ REPO_NAME=$(basename "$PWD")
 
 echo "Setting up GitHub Actions workflows for: ${REPO_NAME}"
 echo "Target directory: ${PWD}/${WORKFLOWS_DIR}"
+echo "Template directory: ${TEMPLATE_WORKFLOWS_DIR}"
+
+if [[ ! -f "${CAPROVER_TEMPLATE}" ]]; then
+	echo "Error: missing template file ${CAPROVER_TEMPLATE}" >&2
+	exit 1
+fi
+
+if [[ ! -f "${MANUAL_TEMPLATE}" ]]; then
+	echo "Error: missing template file ${MANUAL_TEMPLATE}" >&2
+	exit 1
+fi
 
 mkdir -p "${WORKFLOWS_DIR}"
 
-write_file() {
-	local target_path="$1"
-	local content="$2"
+copy_template_file() {
+	local source_path="$1"
+	local target_path="$2"
+
+	if [[ "${source_path:A}" == "${target_path:A}" ]]; then
+		echo "Skipping ${target_path} (source and target are the same file)"
+		return
+	fi
 
 	# if [[ -f "${target_path}" ]]; then
 	# 	echo "Skipping ${target_path} (already exists)"
 	# 	return
 	# fi
 
-	printf "%s\n" "${content}" >"${target_path}"
+	cp "${source_path}" "${target_path}"
 	echo "Created ${target_path}"
 }
 
-write_file "${CAPROVER_WORKFLOW}" \
-	"name: CapRover Deploy
-
-on:
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: Git branch to deploy
-        required: true
-        type: choice
-        options: [development, production]
-      server:
-        description: Server to deploy to
-        required: true
-        type: choice
-        options: [frginbox, storage]
-      use_default_app_name:
-        description: Use the repository name as the CapRover app name
-        required: false
-        type: boolean
-        default: true
-      custom_app_name:
-        description: Custom CapRover app name (if not using the repository name)
-        required: false
-        type: string
-
-jobs:
-  deploy:
-    uses: ultra-mega-apps/workflows-public/.github/workflows/caprover-deployment.yaml@main
-    with:
-      branch: \${{ inputs.branch }}
-      server: \${{ inputs.server }}
-      use_default_app_name: \${{ inputs.use_default_app_name }}
-      custom_app_name: \${{ inputs.custom_app_name }}
-    secrets: inherit"
-
-write_file "${MANUAL_WORKFLOW}" "$(
-	cat <<'YAML'
-name: Manual CapRover Deploy
-
-on:
-  workflow_dispatch:
-    inputs:
-      caprover_host:
-        description: CapRover server host URL
-        required: true
-        default: https://captain.example.com
-        type: string
-      caprover_password:
-        description: CapRover app token/password
-        required: true
-        type: string
-      app_name:
-        description: CapRover app name
-        required: true
-        default: secnote
-        type: string
-      branch:
-        description: Git branch to deploy
-        required: true
-        default: main
-        type: choice
-        options:
-          - main
-          - master
-          - develop
-
-permissions:
-  contents: read
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Secure Extract and Mask Password
-        run: |
-          # 1. Read the input directly from the event payload JSON
-          # This prevents GitHub from rendering the secret in the script or env logs.
-          RAW_PASSWORD=$(jq -r '.inputs.caprover_password' $GITHUB_EVENT_PATH)
-          
-          # 2. Mask it dynamically
-          echo "::add-mask::$RAW_PASSWORD"
-          
-          # 3. Export to global env for subsequent steps
-          echo "CAPROVER_PASSWORD=$RAW_PASSWORD" >> $GITHUB_ENV
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch }}
-
-      - name: Deploy
-        env:
-          CAPROVER_HOST: ${{ inputs.caprover_host }}
-          CAPROVER_APP_NAME: ${{ inputs.app_name }}
-          CAPROVER_BRANCH: ${{ inputs.branch }}
-        run: |
-          npx --yes caprover deploy \
-            -u "${CAPROVER_HOST}" \
-            -p "${CAPROVER_PASSWORD}" \
-            -a "${CAPROVER_APP_NAME}" \
-            -b "${CAPROVER_BRANCH}"
-YAML
-)"
+copy_template_file "${CAPROVER_TEMPLATE}" "${CAPROVER_WORKFLOW}"
+copy_template_file "${MANUAL_TEMPLATE}" "${MANUAL_WORKFLOW}"
 
 echo "Done. Review the generated files and adjust branch/server options as needed."
